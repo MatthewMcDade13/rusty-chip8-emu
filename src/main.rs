@@ -22,7 +22,7 @@ pub fn main() -> Result<(), String> {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("Rusty Chip8", 800, 600)
+    let window = video_subsystem.window("Rusty Chip8", 1280, 720)
         .resizable()
         .position_centered()
         .build()
@@ -48,7 +48,7 @@ pub fn main() -> Result<(), String> {
 
     let texture_creator = canvas.texture_creator();
 
-    let mut chip8_display = texture_creator.create_texture_streaming(PixelFormatEnum::RGB888, 64, 32).unwrap();
+    let mut chip8_display = texture_creator.create_texture_streaming(PixelFormatEnum::RGB888, Chip8::DISPLAY_W, Chip8::DISPLAY_H).unwrap();
 
     let mut clock = Instant::now();
     let mut frame_accumulator: f32 = 0.0;
