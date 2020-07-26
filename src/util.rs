@@ -19,12 +19,16 @@ impl<T> Flat2DArray<T> where T: Array2DShow {
         }
     }
 
+    pub fn clear(&mut self) {
+        for i in self.data.iter_mut() { *i = T::default(); }
+    }
+
     pub fn get(&self, x: usize, y: usize) -> &T {
-        &self.data[x * self.width + y]
+        &self.data[y * self.width + x]
     }
 
     pub fn set(&mut self, x: usize, y: usize, value: T) {
-        self.data[x * self.width + y] = value;
+        self.data[y * self.width + x] = value;
     }
 }
 

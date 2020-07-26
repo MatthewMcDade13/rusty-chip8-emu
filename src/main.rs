@@ -1,30 +1,33 @@
 mod util;
 mod chip8;
 extern crate sdl2;
+extern crate rand;
+extern crate libc;
 
-
+use chip8::Chip8;
 use util::Flat2DArray;
 
 use sdl2::rect::Rect;
-use sdl2::pixels::Color;
+use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::render::{Texture};
 use std::time::Duration;
-
 
 pub fn main() -> Result<(), String> {
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo", 800, 600)
-        .opengl()
+    let window = video_subsystem.window("Rusty Chip8", 800, 600)
+        .resizable()
         .position_centered()
         .build()
         .unwrap();
  
     let mut canvas = window.into_canvas()
-        .index(find_sdl_gl_driver().unwrap())
+        // .present_vsync()
+        .accelerated()
         .build()
         .unwrap();
  
@@ -32,8 +35,18 @@ pub fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
-    let mut chip8 = chip8::Chip8::new();
-    
+    let mut chip8 = Chip8::new();
+
+    let prog = "KeypadTest.ch8";
+    if let Err(e) = chip8.load_program(prog) {
+        return Err(format!("Error loading program at path {}\nstd::io::Error {}", prog, e))
+    }
+
+    let texture_creator = canvas.texture_creator();
+
+    let mut chip8_display = texture_creator.create_texture_streaming(PixelFormatEnum::RGB888, 64, 32).unwrap();
+
+
     'running: loop {
             
         for event in event_pump.poll_iter() {
@@ -44,30 +57,20 @@ pub fn main() -> Result<(), String> {
                 },
                 _ => {}
             }
+            chip8.process_input(&event);
         }
         // The rest of the game loop goes here...
 
         if let Ok(true) = chip8.cycle() {
-            canvas.clear();
 
-            canvas.set_draw_color(Color::RED);
-            {
-                let (x, y) = canvas.window().size();
-                canvas.fill_rect(Rect::new(x as i32 / 2, y as i32 / 2, 50, 50))?;
-            }
-            canvas.set_draw_color(Color::BLACK);
-    
-            canvas.present();
+            let format = chip8_display.query().format;
+            // update the SDL texture we draw every frame with chip8 gfx buffer            
+            let _ = chip8_display.update(None, chip8.render_to_pixels().as_slice(), format.byte_size_of_pixels(Chip8::DISPLAY_W as usize));
         }
-       
+        
+        canvas.clear();
+        // TODO/NOTE :: Change/play with last parameter of copy (dest) for different display sizes
+        canvas.copy(&chip8_display, None, None)?;
+        canvas.present();
     }
-}
-
-fn find_sdl_gl_driver() -> Option<u32> {
-    for (index, item) in sdl2::render::drivers().enumerate() {
-        if item.name == "opengl" {
-            return Some(index as u32);
-        }
-    }
-    None
 }
