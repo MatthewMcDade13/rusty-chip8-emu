@@ -12,7 +12,10 @@ use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::render::{Texture};
-use std::time::Duration;
+use std::time::{Instant, Duration};
+
+// TODO: Make this into program parameter
+const TARGET_DELTA: f32 = 1.0/200.0;
 
 pub fn main() -> Result<(), String> {
 
@@ -26,7 +29,6 @@ pub fn main() -> Result<(), String> {
         .unwrap();
  
     let mut canvas = window.into_canvas()
-        // .present_vsync()
         .accelerated()
         .build()
         .unwrap();
@@ -37,18 +39,21 @@ pub fn main() -> Result<(), String> {
 
     let mut chip8 = Chip8::new();
 
-    let prog = "KeypadTest.ch8";
-    if let Err(e) = chip8.load_program(prog) {
-        return Err(format!("Error loading program at path {}\nstd::io::Error {}", prog, e))
+    {
+        let prog = "Pong.ch8";
+        if let Err(e) = chip8.load_program(prog) {
+            return Err(format!("Error loading program at path {}\nstd::io::Error {}", prog, e))
+        }
     }
 
     let texture_creator = canvas.texture_creator();
 
     let mut chip8_display = texture_creator.create_texture_streaming(PixelFormatEnum::RGB888, 64, 32).unwrap();
 
-
+    let mut clock = Instant::now();
+    let mut frame_accumulator: f32 = 0.0;
     'running: loop {
-            
+        
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit {..} |
@@ -59,15 +64,19 @@ pub fn main() -> Result<(), String> {
             }
             chip8.process_input(&event);
         }
-        // The rest of the game loop goes here...
-
-        if let Ok(true) = chip8.cycle() {
-
-            let format = chip8_display.query().format;
-            // update the SDL texture we draw every frame with chip8 gfx buffer            
-            let _ = chip8_display.update(None, chip8.render_to_pixels().as_slice(), format.byte_size_of_pixels(Chip8::DISPLAY_W as usize));
-        }
         
+        frame_accumulator += clock.elapsed().as_secs_f32();
+        clock = Instant::now(); 
+
+        if frame_accumulator > TARGET_DELTA {
+            frame_accumulator = 0.0;
+            if let Ok(true) = chip8.cycle() {
+                let format = chip8_display.query().format;
+                // update the SDL texture we draw every frame with chip8 gfx buffer            
+                let _ = chip8_display.update(None, chip8.render_to_pixels().as_slice(), format.byte_size_of_pixels(Chip8::DISPLAY_W as usize));
+            }
+        }
+
         canvas.clear();
         // TODO/NOTE :: Change/play with last parameter of copy (dest) for different display sizes
         canvas.copy(&chip8_display, None, None)?;
