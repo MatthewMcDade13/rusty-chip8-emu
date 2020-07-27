@@ -22,8 +22,8 @@ impl Opcode {
         (self.0 & 0x00FF) as u8
     }
     
-    fn addr(self) -> usize {
-        (self.0 & 0x0FFF) as usize
+    fn addr(self) -> u16 {
+        self.0 & 0x0FFF
     }
     
 }
@@ -49,7 +49,7 @@ impl Pixel {
 }
 
 const FONT_MEM_OFFSET: u16 = 0x00;
-const chip8_fontset: [u8; 80] = [ 
+const CHIP8_FONTSET: [u8; 80] = [ 
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 	0x20, 0x60, 0x20, 0x20, 0x70, // 1
 	0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -103,12 +103,12 @@ impl Chip8 {
             gfx: Flat2DArray::new(Chip8::DISPLAY_W as usize, Chip8::DISPLAY_H as usize),
         };
         // load fontset
-        for i in 0..chip8_fontset.len() {
-            c.memory[i] = chip8_fontset[i];
+        for i in 0..CHIP8_FONTSET.len() {
+            c.memory[i] = CHIP8_FONTSET[i];
         }
         // unsafe {
-        //     let len = chip8_fontset.len();
-        //     let src = chip8_fontset.as_ptr();
+        //     let len = CHIP8_FONTSET.len();
+        //     let src = CHIP8_FONTSET.as_ptr();
         //     let dst = c.memory.as_mut_ptr().offset(FONT_MEM_OFFSET as isize);
 
         //     std::ptr::copy_nonoverlapping(src, dst, len);
@@ -226,13 +226,13 @@ impl Chip8 {
             },
             // 1nnn - JP addr - Jump to location nnn
             0x1000 => {
-                self.pc = opcode.0 & 0x0FFF;
+                self.pc = opcode.addr();
             },
             // 2nnn - CALL addr - Call Subroutine at nnn
             0x2000 => {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
-                self.pc = opcode.0 & 0x0FFF;
+                self.pc = opcode.addr();
             },
             // 3xkk - SE Vx, byte - Skip next instruction if Vx == kk
             0x3000 => {
@@ -384,12 +384,12 @@ impl Chip8 {
             },
             // Annn - LD I, addr - Set I = nnn.
             0xA000 => {
-                self.i = opcode.0 & 0x0FFF;
+                self.i = opcode.addr();
                 
             },
             // Bnnn - JP V0, addr - Jump to location nnn + V0.
             0xB000 => {
-                self.pc = opcode.0 & 0x0FFF + self.v[0] as u16;
+                self.pc = opcode.addr() + self.v[0] as u16;
             },
             // Cxkk - RND Vx, byte - Set Vx = random byte AND kk.
             0xC000 => {
@@ -430,7 +430,6 @@ impl Chip8 {
                             if gfx_byte == 0xFF {
                                 self.v[0xF] = 1;
                             }
-                            let r = gfx_byte ^ 0xFF;
                             self.gfx.set(xoffset, yoffset, gfx_byte ^ 0xFF);
                         }
                         

@@ -5,14 +5,11 @@ extern crate rand;
 extern crate libc;
 
 use chip8::Chip8;
-use util::Flat2DArray;
 
-use sdl2::rect::Rect;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::render::{Texture};
-use std::time::{Instant, Duration};
+use std::time::{Instant};
 
 // TODO: Make this into program parameter
 const TARGET_DELTA: f32 = 1.0/200.0;
@@ -40,9 +37,9 @@ pub fn main() -> Result<(), String> {
     let mut chip8 = Chip8::new();
 
     {
-        let prog = "Pong.ch8";
-        if let Err(e) = chip8.load_program(prog) {
-            return Err(format!("Error loading program at path {}\nstd::io::Error {}", prog, e))
+        let prog = get_program_name()?;
+        if let Err(e) = chip8.load_program(&prog) {
+            return Err(format!("Error loading program at path '{}' :: std::io::Error {}", prog, e))
         }
     }
 
@@ -82,4 +79,23 @@ pub fn main() -> Result<(), String> {
         canvas.copy(&chip8_display, None, None)?;
         canvas.present();
     }
+}
+
+fn get_program_name() -> Result<String, String> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+
+    if args.len() > 1 {
+        return Err(format!("Multiple arguments not yet implemented. Please only pass the relative path of the chip8 program to be loaded."));
+    }
+
+    let name = if args.len() == 1 {
+        String::from(&args[0])
+    } else {  
+        match std::env::current_dir() {
+            // TODO/BUG :: cur_dir is current calling directory, so this doesnt work if we put chippin in PATH.
+            Ok(cur_dir) => cur_dir.into_os_string().into_string().unwrap() + "/test_opcode.ch8",
+            Err(_) => return Err(format!("Error loading default program :: Unable to get current path of executable. Please provide a full path to program to be loaded"))
+        }
+    };
+    Ok(name)
 }
