@@ -10,6 +10,57 @@ pub struct Flat2DArray<T: Array2DShow = u8> {
     pub data: Vec<T>
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct FrameTimer {
+    clock: time::Instant,
+    accum: f32,
+    target_delta: f32,
+}
+
+impl FrameTimer {
+    pub fn new(target_delta: f32) -> Self {
+        FrameTimer {
+            clock: time::Instant::now(),
+            accum: 0.0,
+            target_delta
+        }
+    }
+
+    /**
+     *  Gets elapsed time since last call to elapsed() or new().
+     *  Used to get time from last frame to current frame
+    */
+    pub fn elapsed(&mut self) -> f32 {
+        let elapsed = self.clock.elapsed().as_secs_f32();
+        self.clock = time::Instant::now();
+        elapsed
+    }
+
+    pub fn accum_elapsed(&mut self) -> f32 {
+        self.accum += self.elapsed();
+        self.accum
+    }
+
+    pub fn reset(&mut self) {
+        self.accum = 0.0;
+        self.clock = time::Instant::now();
+    }
+
+    /**
+     * Called every frame to add up the accumulator and return true
+     * if we have passed enough time for an update
+    */
+    pub fn frame(&mut self) -> bool {
+        let acc = self.accum_elapsed();
+        if acc > self.target_delta {
+            true
+        } else {
+            false
+        }
+    }
+    
+}
+
 impl<T> Flat2DArray<T> where T: Array2DShow {
 
     pub fn new(width: usize, height: usize) -> Flat2DArray<T> {

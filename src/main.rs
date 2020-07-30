@@ -1,23 +1,36 @@
 mod util;
 mod chip8;
+
+extern crate libc;
+extern crate imgui;
 extern crate sdl2;
 extern crate rand;
-extern crate libc;
 
 use chip8::Chip8;
 
+use util::FrameTimer;
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::{Instant};
 
 // TODO: Make this into program parameter
-const TARGET_DELTA: f32 = 1.0/200.0;
+const TARGET_LOGIC_DELTA: f32 = 1.0/200.0;
+const TARGET_DELAY_SOUND_DELTA: f32 = 1.0/60.0;
 
 pub fn main() -> Result<(), String> {
 
+    // unsafe {
+    //     igGetWindowHeight();
+    // }
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+
+    // {
+    //     let gl_attr = video_subsystem.gl_attr();
+    //     gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
+    //     gl_attr.set_context_version(3, 3);
+    // }
 
     let window = video_subsystem.window("Rusty Chip8", 1280, 720)
         .resizable()
@@ -47,8 +60,11 @@ pub fn main() -> Result<(), String> {
 
     let mut chip8_display = texture_creator.create_texture_streaming(PixelFormatEnum::RGB888, Chip8::DISPLAY_W, Chip8::DISPLAY_H).unwrap();
 
-    let mut clock = Instant::now();
-    let mut frame_accumulator: f32 = 0.0;
+    let mut logic_timer = FrameTimer::new(TARGET_LOGIC_DELTA);
+    let mut sound_delay_timer = FrameTimer::new(TARGET_DELAY_SOUND_DELTA);
+
+    // let mut clock = Instant::now();
+    // let mut frame_accumulator: f32 = 0.0;
     'running: loop {
         
         for event in event_pump.poll_iter() {
@@ -62,16 +78,21 @@ pub fn main() -> Result<(), String> {
             chip8.process_input(&event);
         }
         
-        frame_accumulator += clock.elapsed().as_secs_f32();
-        clock = Instant::now(); 
+        // frame_accumulator += clock.elapsed().as_secs_f32();
+        // clock = Instant::now(); 
 
-        if frame_accumulator > TARGET_DELTA {
-            frame_accumulator = 0.0;
+        if logic_timer.frame() {
+            logic_timer.reset();
             if let Ok(true) = chip8.cycle() {
                 let format = chip8_display.query().format;
                 // update the SDL texture we draw every frame with chip8 gfx buffer            
                 let _ = chip8_display.update(None, chip8.render_to_pixels().as_slice(), format.byte_size_of_pixels(Chip8::DISPLAY_W as usize));
             }
+        }
+
+        if sound_delay_timer.frame() {
+            sound_delay_timer.reset();
+            chip8.cycle_timers();
         }
 
         canvas.clear();

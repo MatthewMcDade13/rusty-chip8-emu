@@ -1,4 +1,4 @@
-use crate::util::Flat2DArray;
+use crate::util::{Flat2DArray};
 use rand::{thread_rng, Rng};
 use std::num::Wrapping;
 
@@ -196,6 +196,11 @@ impl Chip8 {
             self.memory[PROGRAM_START as usize + i] = buffer[i];
         }
         Ok(())
+    }
+
+    pub fn cycle_timers(&mut self) {
+        if self.delay_timer > 0 { self.delay_timer -= 1; }
+        if self.sound_timer > 0 { self.sound_timer -= 1; }    
     }
 
     // Ok Result true if draw was called and screen should be updated, false otherwise
@@ -551,8 +556,6 @@ impl Chip8 {
             _ => return Err(format_err(opcode))
         }
 
-        if self.delay_timer > 0 { self.delay_timer -= 1; }
-        if self.sound_timer > 0 { self.sound_timer -= 1; }
         Ok(should_draw)
     }
 }
